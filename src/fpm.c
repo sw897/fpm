@@ -120,12 +120,12 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
          * as if we delete the socket-file and rebind there will be no "socket already in use" error
          */
         if (-1 == (fcgi_fd = socket(socket_type, SOCK_STREAM, 0))) {
-            fprintf(stderr, "spawn-fcgi: couldn't create socket: %s\n", strerror(errno));
+            fprintf(stderr, "couldn't create socket: %s\n", strerror(errno));
             return -1;
         }
 
         if (0 == connect(fcgi_fd, fcgi_addr, servlen)) {
-            fprintf(stderr, "spawn-fcgi: socket is already in use, can't spawn\n");
+            fprintf(stderr, "socket is already in use, can't spawn\n");
             close(fcgi_fd);
             return -1;
         }
@@ -136,7 +136,7 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
             case ENOENT:
                 break;
             default:
-                fprintf(stderr, "spawn-fcgi: removing old socket failed: %s\n", strerror(errno));
+                fprintf(stderr, "removing old socket failed: %s\n", strerror(errno));
                 close(fcgi_fd);
                 return -1;
             }
@@ -170,12 +170,12 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
             fcgi_addr = (struct sockaddr *) &fcgi_addr_in6;
 #endif
         } else {
-            fprintf(stderr, "spawn-fcgi: '%s' is not a valid IP address\n", addr);
+            fprintf(stderr, "'%s' is not a valid IP address\n", addr);
             return -1;
 #else
         } else {
             if ((in_addr_t)(-1) == (fcgi_addr_in.sin_addr.s_addr = inet_addr(addr))) {
-                fprintf(stderr, "spawn-fcgi: '%s' is not a valid IPv4 address\n", addr);
+                fprintf(stderr, "'%s' is not a valid IPv4 address\n", addr);
                 return -1;
             }
 #endif
@@ -184,26 +184,26 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
 
 
     if (-1 == (fcgi_fd = socket(socket_type, SOCK_STREAM, 0))) {
-        fprintf(stderr, "spawn-fcgi: couldn't create socket: %s\n", strerror(errno));
+        fprintf(stderr, "couldn't create socket: %s\n", strerror(errno));
         return -1;
     }
 
     val = 1;
     if (setsockopt(fcgi_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) < 0) {
-        fprintf(stderr, "spawn-fcgi: couldn't set SO_REUSEADDR: %s\n", strerror(errno));
+        fprintf(stderr, "couldn't set SO_REUSEADDR: %s\n", strerror(errno));
         close(fcgi_fd);
         return -1;
     }
 
     if (-1 == bind(fcgi_fd, fcgi_addr, servlen)) {
-        fprintf(stderr, "spawn-fcgi: bind failed: %s\n", strerror(errno));
+        fprintf(stderr, "bind failed: %s\n", strerror(errno));
         close(fcgi_fd);
         return -1;
     }
 
     if (unixsocket) {
         if (-1 == chmod(unixsocket, mode)) {
-            fprintf(stderr, "spawn-fcgi: couldn't chmod socket: %s\n", strerror(errno));
+            fprintf(stderr, "couldn't chmod socket: %s\n", strerror(errno));
             close(fcgi_fd);
             unlink(unixsocket);
             return -1;
@@ -213,7 +213,7 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
             if (0 == uid) uid = -1;
             if (0 == gid) gid = -1;
             if (-1 == chown(unixsocket, uid, gid)) {
-                fprintf(stderr, "spawn-fcgi: couldn't chown socket: %s\n", strerror(errno));
+                fprintf(stderr, "couldn't chown socket: %s\n", strerror(errno));
                 close(fcgi_fd);
                 unlink(unixsocket);
                 return -1;
@@ -222,7 +222,7 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
     }
 
     if (-1 == listen(fcgi_fd, backlog)) {
-        fprintf(stderr, "spawn-fcgi: listen failed: %s\n", strerror(errno));
+        fprintf(stderr, "listen failed: %s\n", strerror(errno));
         close(fcgi_fd);
         if (unixsocket) unlink(unixsocket);
         return -1;
@@ -234,6 +234,11 @@ static int bind_socket(const char *addr, unsigned short port, const char *unixso
 static int fcgi_spawn_connection(char *appPath, char **appArgv, int fcgi_fd, int fork_count, int child_count, int pid_fd, int nofork) {
     int status, rc = 0;
     struct timeval tv = { 0, 100 * 1000 };
+
+    int fcgi_count = fork_count;
+    int pid_list[fcgi_count];
+    int it = 0;
+
 
     pid_t child;
 
@@ -273,7 +278,7 @@ static int fcgi_spawn_connection(char *appPath, char **appArgv, int fcgi_fd, int
                     if (max_fd != STDERR_FILENO) dup2(max_fd, STDERR_FILENO);
                     if (max_fd != STDOUT_FILENO && max_fd != STDERR_FILENO) close(max_fd);
                 } else {
-                    fprintf(stderr, "spawn-fcgi: couldn't open and redirect stdout/stderr to '/dev/null': %s\n", strerror(errno));
+                    fprintf(stderr, "couldn't open and redirect stdout/stderr to '/dev/null': %s\n", strerror(errno));
                 }
             }
 
@@ -298,14 +303,14 @@ static int fcgi_spawn_connection(char *appPath, char **appArgv, int fcgi_fd, int
             }
 
             /* in nofork mode stderr is still open */
-            fprintf(stderr, "spawn-fcgi: exec failed: %s\n", strerror(errno));
+            fprintf(stderr, "exec failed: %s\n", strerror(errno));
             exit(errno);
 
             break;
         }
         case -1:
             /* error */
-            fprintf(stderr, "spawn-fcgi: fork failed: %s\n", strerror(errno));
+            fprintf(stderr, "fork failed: %s\n", strerror(errno));
             break;
         default:
             /* father */
@@ -315,7 +320,7 @@ static int fcgi_spawn_connection(char *appPath, char **appArgv, int fcgi_fd, int
 
             switch (waitpid(child, &status, WNOHANG)) {
             case 0:
-                fprintf(stdout, "spawn-fcgi: child spawned successfully: PID: %d\n", child);
+                fprintf(stdout, "child spawned successfully: PID: %d\n", child);
 
                 /* write pid file */
                 if (-1 != pid_fd) {
@@ -325,34 +330,37 @@ static int fcgi_spawn_connection(char *appPath, char **appArgv, int fcgi_fd, int
                     snprintf(pidbuf, sizeof(pidbuf) - 1, "%d", child);
 
                     if (-1 == write_all(pid_fd, pidbuf, strlen(pidbuf))) {
-                        fprintf(stderr, "spawn-fcgi: writing pid file failed: %s\n", strerror(errno));
+                        fprintf(stderr, "writing pid file failed: %s\n", strerror(errno));
                         close(pid_fd);
                         pid_fd = -1;
                     }
                     /* avoid eol for the last one */
                     if (-1 != pid_fd && fork_count != 0) {
                         if (-1 == write_all(pid_fd, "\n", 1)) {
-                            fprintf(stderr, "spawn-fcgi: writing pid file failed: %s\n", strerror(errno));
+                            fprintf(stderr, "writing pid file failed: %s\n", strerror(errno));
                             close(pid_fd);
                             pid_fd = -1;
                         }
                     }
                 }
 
+                // store the child pid
+                pid_list[fork_count] = child;
+
                 break;
             case -1:
                 break;
             default:
                 if (WIFEXITED(status)) {
-                    fprintf(stderr, "spawn-fcgi: child exited with: %d\n",
+                    fprintf(stderr, "child exited with: %d\n",
                         WEXITSTATUS(status));
                     rc = WEXITSTATUS(status);
                 } else if (WIFSIGNALED(status)) {
-                    fprintf(stderr, "spawn-fcgi: child signaled: %d\n",
+                    fprintf(stderr, "child signaled: %d\n",
                         WTERMSIG(status));
                     rc = 1;
                 } else {
-                    fprintf(stderr, "spawn-fcgi: child died somehow: exit status = %d\n",
+                    fprintf(stderr, "child died somehow: exit status = %d\n",
                         status);
                     rc = status;
                 }
@@ -360,6 +368,152 @@ static int fcgi_spawn_connection(char *appPath, char **appArgv, int fcgi_fd, int
 
             break;
         }
+    }
+
+    // loop, check children status
+    while(1)
+    {
+        for (it = 0; it < fcgi_count; it++)
+        {
+            child = pid_list[it];
+
+            switch (waitpid(child, &status, WNOHANG)) {
+            case 0:
+                fprintf(stdout, "child running successfully: PID: %d\n", child);
+                break;
+            default:
+                if (WIFEXITED(status)) {
+                    fprintf(stderr, "child exited with: %d\n",
+                        WEXITSTATUS(status));
+                    rc = WEXITSTATUS(status);
+                } else if (WIFSIGNALED(status)) {
+                    fprintf(stderr, "child signaled: %d\n",
+                        WTERMSIG(status));
+                    rc = 1;
+                } else {
+                    fprintf(stderr, "child died somehow: exit status = %d\n",
+                        status);
+                    rc = status;
+                }
+                child = fork();
+                switch (child) {
+                case 0: {
+                    char cgi_childs[64];
+                    int max_fd = 0;
+
+                    int i = 0;
+
+                    if (child_count >= 0) {
+                        snprintf(cgi_childs, sizeof(cgi_childs), "PHP_FCGI_CHILDREN=%d", child_count);
+                        putenv(cgi_childs);
+                    }
+
+                    if(fcgi_fd != FCGI_LISTENSOCK_FILENO) {
+                        close(FCGI_LISTENSOCK_FILENO);
+                        dup2(fcgi_fd, FCGI_LISTENSOCK_FILENO);
+                        close(fcgi_fd);
+                    }
+
+                    /* loose control terminal */
+                    if (!nofork) {
+                        setsid();
+
+                        max_fd = open("/dev/null", O_RDWR);
+                        if (-1 != max_fd) {
+                            if (max_fd != STDOUT_FILENO) dup2(max_fd, STDOUT_FILENO);
+                            if (max_fd != STDERR_FILENO) dup2(max_fd, STDERR_FILENO);
+                            if (max_fd != STDOUT_FILENO && max_fd != STDERR_FILENO) close(max_fd);
+                        } else {
+                            fprintf(stderr, "couldn't open and redirect stdout/stderr to '/dev/null': %s\n", strerror(errno));
+                        }
+                    }
+
+                    /* we don't need the client socket */
+                    for (i = 3; i < max_fd; i++) {
+                        if (i != FCGI_LISTENSOCK_FILENO) close(i);
+                    }
+
+                    /* fork and replace shell */
+                    if (appArgv) {
+                        execv(appArgv[0], appArgv);
+
+                    } else {
+                        char *b = malloc((sizeof("exec ") - 1) + strlen(appPath) + 1);
+                        strcpy(b, "exec ");
+                        strcat(b, appPath);
+
+                        /* exec the cgi */
+                        execl("/bin/sh", "sh", "-c", b, (char *)NULL);
+
+                        free(b);
+                    }
+
+                    /* in nofork mode stderr is still open */
+                    fprintf(stderr, "exec failed: %s\n", strerror(errno));
+                    exit(errno);
+
+                    break;
+                }
+                case -1:
+                    /* error */
+                    fprintf(stderr, "fork failed: %s\n", strerror(errno));
+                    break;
+                default:
+                    /* father */
+                    /* wait */
+                    select(0, NULL, NULL, NULL, &tv);
+
+                    switch (waitpid(child, &status, WNOHANG)) {
+                    case 0:
+                        fprintf(stdout, "child spawned successfully: PID: %d\n", child);
+
+                        /* write pid file */
+                        if (-1 != pid_fd) {
+                            /* assume a 32bit pid_t */
+                            char pidbuf[12];
+
+                            snprintf(pidbuf, sizeof(pidbuf) - 1, "%d", child);
+
+                            if (-1 == write_all(pid_fd, pidbuf, strlen(pidbuf))) {
+                                fprintf(stderr, "writing pid file failed: %s\n", strerror(errno));
+                                close(pid_fd);
+                                pid_fd = -1;
+                            }
+                            /* avoid eol for the last one */
+                            if (-1 != pid_fd && fork_count != 0) {
+                                if (-1 == write_all(pid_fd, "\n", 1)) {
+                                    fprintf(stderr, "writing pid file failed: %s\n", strerror(errno));
+                                    close(pid_fd);
+                                    pid_fd = -1;
+                                }
+                            }
+                        }
+
+                        // update the child pid
+                        pid_list[it] = child;
+
+                        break;
+                    default:
+                        if (WIFEXITED(status)) {
+                            fprintf(stderr, "child exited with: %d\n",
+                                WEXITSTATUS(status));
+                            rc = WEXITSTATUS(status);
+                        } else if (WIFSIGNALED(status)) {
+                            fprintf(stderr, "child signaled: %d\n",
+                                WTERMSIG(status));
+                            rc = 1;
+                        } else {
+                            fprintf(stderr, "child died somehow: exit status = %d\n",
+                                status);
+                            rc = status;
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+        sleep(1000);
     }
 
     if (-1 != pid_fd) {
@@ -385,13 +539,13 @@ static int find_user_group(const char *user, const char *group, uid_t *uid, gid_
 
         if (my_uid <= 0 || *endptr) {
             if (NULL == (my_pwd = getpwnam(user))) {
-                fprintf(stderr, "spawn-fcgi: can't find user name %s\n", user);
+                fprintf(stderr, "can't find user name %s\n", user);
                 return -1;
             }
             my_uid = my_pwd->pw_uid;
 
             if (my_uid == 0) {
-                fprintf(stderr, "spawn-fcgi: I will not set uid to 0\n");
+                fprintf(stderr, "I will not set uid to 0\n");
                 return -1;
             }
 
@@ -407,13 +561,13 @@ static int find_user_group(const char *user, const char *group, uid_t *uid, gid_
 
         if (my_gid <= 0 || *endptr) {
             if (NULL == (my_grp = getgrnam(group))) {
-                fprintf(stderr, "spawn-fcgi: can't find group name %s\n", group);
+                fprintf(stderr, "can't find group name %s\n", group);
                 return -1;
             }
             my_gid = my_grp->gr_gid;
 
             if (my_gid == 0) {
-                fprintf(stderr, "spawn-fcgi: I will not set gid to 0\n");
+                fprintf(stderr, "I will not set gid to 0\n");
                 return -1;
             }
         }
@@ -421,7 +575,7 @@ static int find_user_group(const char *user, const char *group, uid_t *uid, gid_
         my_gid = my_pwd->pw_gid;
 
         if (my_gid == 0) {
-            fprintf(stderr, "spawn-fcgi: I will not set gid to 0\n");
+            fprintf(stderr, "I will not set gid to 0\n");
             return -1;
         }
     }
@@ -506,7 +660,7 @@ int main(int argc, char **argv) {
         case 'a': addr = optarg;/* ip addr */ break;
         case 'p': port = strtol(optarg, &endptr, 10);/* port */
             if (*endptr) {
-                fprintf(stderr, "spawn-fcgi: invalid port: %u\n", (unsigned int) port);
+                fprintf(stderr, "invalid port: %u\n", (unsigned int) port);
                 return -1;
             }
             break;
@@ -537,26 +691,26 @@ int main(int argc, char **argv) {
     }
 
     if (NULL == fcgi_app && NULL == fcgi_app_argv) {
-        fprintf(stderr, "spawn-fcgi: no FastCGI application given\n");
+        fprintf(stderr, "no FastCGI application given\n");
         return -1;
     }
 
     if (0 == port && NULL == unixsocket) {
-        fprintf(stderr, "spawn-fcgi: no socket given (use either -p or -s)\n");
+        fprintf(stderr, "no socket given (use either -p or -s)\n");
         return -1;
     } else if (0 != port && NULL != unixsocket) {
-        fprintf(stderr, "spawn-fcgi: either a Unix domain socket or a TCP-port, but not both\n");
+        fprintf(stderr, "either a Unix domain socket or a TCP-port, but not both\n");
         return -1;
     }
 
     if (unixsocket && strlen(unixsocket) > sizeof(un.sun_path) - 1) {
-        fprintf(stderr, "spawn-fcgi: path of the Unix domain socket is too long\n");
+        fprintf(stderr, "path of the Unix domain socket is too long\n");
         return -1;
     }
 
     /* SUID handling */
     if (!i_am_root && issetugid()) {
-        fprintf(stderr, "spawn-fcgi: Are you nuts? Don't apply a SUID bit to this binary\n");
+        fprintf(stderr, "Are you nuts? Don't apply a SUID bit to this binary\n");
         return -1;
     }
 
@@ -566,7 +720,7 @@ int main(int argc, char **argv) {
         (-1 == (pid_fd = open(pid_file, O_WRONLY | O_CREAT | O_EXCL | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)))) {
         struct stat st;
         if (errno != EEXIST) {
-            fprintf(stderr, "spawn-fcgi: opening PID-file '%s' failed: %s\n",
+            fprintf(stderr, "opening PID-file '%s' failed: %s\n",
                 pid_file, strerror(errno));
             return -1;
         }
@@ -574,7 +728,7 @@ int main(int argc, char **argv) {
         /* ok, file exists */
 
         if (0 != stat(pid_file, &st)) {
-            fprintf(stderr, "spawn-fcgi: stating PID-file '%s' failed: %s\n",
+            fprintf(stderr, "stating PID-file '%s' failed: %s\n",
                 pid_file, strerror(errno));
             return -1;
         }
@@ -582,13 +736,13 @@ int main(int argc, char **argv) {
         /* is it a regular file ? */
 
         if (!S_ISREG(st.st_mode)) {
-            fprintf(stderr, "spawn-fcgi: PID-file exists and isn't regular file: '%s'\n",
+            fprintf(stderr, "PID-file exists and isn't regular file: '%s'\n",
                 pid_file);
             return -1;
         }
 
         if (-1 == (pid_fd = open(pid_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) {
-            fprintf(stderr, "spawn-fcgi: opening PID-file '%s' failed: %s\n",
+            fprintf(stderr, "opening PID-file '%s' failed: %s\n",
                 pid_file, strerror(errno));
             return -1;
         }
@@ -606,7 +760,7 @@ int main(int argc, char **argv) {
             return -1;
 
         if (uid != 0 && gid == 0) {
-            fprintf(stderr, "spawn-fcgi: WARNING: couldn't find the user for uid %i and no group was specified, so only the user privileges will be dropped\n", (int) uid);
+            fprintf(stderr, "WARNING: couldn't find the user for uid %i and no group was specified, so only the user privileges will be dropped\n", (int) uid);
         }
 
         if (0 == sockuid) sockuid = uid;
@@ -620,16 +774,16 @@ int main(int argc, char **argv) {
          */
         if (gid != 0) {
             if (-1 == setgid(gid)) {
-                fprintf(stderr, "spawn-fcgi: setgid(%i) failed: %s\n", (int) gid, strerror(errno));
+                fprintf(stderr, "setgid(%i) failed: %s\n", (int) gid, strerror(errno));
                 return -1;
             }
             if (-1 == setgroups(0, NULL)) {
-                fprintf(stderr, "spawn-fcgi: setgroups(0, NULL) failed: %s\n", strerror(errno));
+                fprintf(stderr, "setgroups(0, NULL) failed: %s\n", strerror(errno));
                 return -1;
             }
             if (real_username) {
                 if (-1 == initgroups(real_username, gid)) {
-                    fprintf(stderr, "spawn-fcgi: initgroups('%s', %i) failed: %s\n", real_username, (int) gid, strerror(errno));
+                    fprintf(stderr, "initgroups('%s', %i) failed: %s\n", real_username, (int) gid, strerror(errno));
                     return -1;
                 }
             }
@@ -637,11 +791,11 @@ int main(int argc, char **argv) {
 
         if (changeroot) {
             if (-1 == chroot(changeroot)) {
-                fprintf(stderr, "spawn-fcgi: chroot('%s') failed: %s\n", changeroot, strerror(errno));
+                fprintf(stderr, "chroot('%s') failed: %s\n", changeroot, strerror(errno));
                 return -1;
             }
             if (-1 == chdir("/")) {
-                fprintf(stderr, "spawn-fcgi: chdir('/') failed: %s\n", strerror(errno));
+                fprintf(stderr, "chdir('/') failed: %s\n", strerror(errno));
                 return -1;
             }
         }
@@ -652,7 +806,7 @@ int main(int argc, char **argv) {
         /* drop root privs */
         if (uid != 0) {
             if (-1 == setuid(uid)) {
-                fprintf(stderr, "spawn-fcgi: setuid(%i) failed: %s\n", (int) uid, strerror(errno));
+                fprintf(stderr, "setuid(%i) failed: %s\n", (int) uid, strerror(errno));
                 return -1;
             }
         }
@@ -662,9 +816,10 @@ int main(int argc, char **argv) {
     }
 
     if (fcgi_dir && -1 == chdir(fcgi_dir)) {
-        fprintf(stderr, "spawn-fcgi: chdir('%s') failed: %s\n", fcgi_dir, strerror(errno));
+        fprintf(stderr, "chdir('%s') failed: %s\n", fcgi_dir, strerror(errno));
         return -1;
     }
 
     return fcgi_spawn_connection(fcgi_app, fcgi_app_argv, fcgi_fd, fork_count, child_count, pid_fd, nofork);
+
 }
